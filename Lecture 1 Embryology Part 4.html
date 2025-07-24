@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embryology & Development Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom focus styles for accessibility */
+        .focusable:focus-visible {
+            outline: 3px solid #4f46e5;
+            outline-offset: 2px;
+        }
+        /* Custom radio button appearance */
+        .custom-radio {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #d1d5db;
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+            margin-right: 0.5rem;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .custom-radio:checked {
+            border-color: #4f46e5;
+            background-color: #4f46e5;
+        }
+        .custom-radio:checked::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            background: white;
+            transform: translate(-50%, -50%);
+        }
+        /* Style for correct/incorrect feedback */
+        .correct-answer {
+            background-color: #dcfce7; /* Green-100 */
+            border-left: 4px solid #22c55e; /* Green-500 */
+        }
+        .incorrect-answer {
+            background-color: #fee2e2; /* Red-100 */
+            border-left: 4px solid #ef4444; /* Red-500 */
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- Intro Popup Modal -->
+    <div id="intro-popup" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full text-center transform transition-all scale-100 opacity-100" role="dialog" aria-modal="true" aria-labelledby="popup-title">
+            <h2 id="popup-title" class="text-2xl font-bold text-slate-900 mb-4">Welcome to the Quiz!</h2>
+            <p class="text-slate-600 mb-6">
+                This quiz covers fundamental concepts in embryology and developmental biology. To pass, you need a score of 50% or higher. You have a maximum of 3 attempts.
+            </p>
+            <div class="mb-6">
+                <label for="user-name" class="sr-only">Your Name</label>
+                <input type="text" id="user-name" placeholder="Please enter your full name" class="w-full text-center bg-slate-100 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focusable">
+                <p id="name-error" class="text-red-500 text-sm mt-2 hidden">Please enter your name to start.</p>
+            </div>
+            <button id="start-quiz-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-indigo-700 focusable transition-colors">
+                Start Quiz
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Quiz Container -->
+    <main id="quiz-container" class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 opacity-0 transition-opacity duration-500">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-slate-900">Embryology & Development Quiz</h1>
+            <div id="status-bar" class="mt-4 text-lg">
+                <span class="font-semibold">Attempt:</span> <span id="attempt-counter">1 of 3</span>
+            </div>
+        </header>
+
+        <form id="quiz-form">
+            <div id="questions-wrapper" class="space-y-8">
+                <!-- Questions will be dynamically inserted here -->
+            </div>
+
+            <!-- Submission and Results Area -->
+            <div class="mt-10 text-center">
+                <button id="submit-btn" type="submit" class="bg-indigo-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-indigo-700 focusable transition-transform transform hover:scale-105 disabled:bg-slate-400 disabled:cursor-not-allowed disabled:transform-none">
+                    Submit Answers
+                </button>
+            </div>
+        </form>
+
+        <!-- Results Display -->
+        <div id="results-container" class="hidden mt-8 p-6 bg-white rounded-xl shadow-lg text-center">
+            <h2 class="text-2xl font-bold mb-4">Quiz Results</h2>
+            <p class="text-5xl font-extrabold mb-2" id="score-percentage">0%</p>
+            <p class="text-lg text-slate-600 mb-4" id="score-text">You answered 0 out of 20 questions correctly.</p>
+            <div id="result-message" class="p-4 rounded-lg font-semibold"></div>
+            <div class="flex justify-center items-center gap-4 mt-6">
+                 <button id="retry-btn" class="hidden bg-green-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-700 focusable">
+                    Try Again
+                </button>
+                <button id="download-btn" class="hidden bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 focusable">
+                    Download Results (PNG)
+                </button>
+            </div>
+            <div id="incorrect-answers-container" class="mt-8 text-left hidden">
+                <h3 class="text-xl font-bold mb-4 border-t pt-6">Review Your Incorrect Answers</h3>
+                <div id="incorrect-answers-list" class="space-y-4"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DATA ---
+            const quizData = [
+                // MCQs
+                { type: 'mcq', question: 'Embryology is the descriptive study of what?', options: ['Adult physiology', 'Early prenatal development of the body', 'Genetic mutations', 'Postnatal growth'], answer: 'Early prenatal development of the body' },
+                { type: 'mcq', question: 'What is the process by which a morula is transformed into a blastocyst?', options: ['Fertilization', 'Gastrulation', 'Migration of cells within the morula', 'Organogenesis'], answer: 'Migration of cells within the morula' },
+                { type: 'mcq', question: 'Gametogenesis involves the development of haploid gametes from diploid primordial germ cells through which process?', options: ['Mitosis', 'Fertilization', 'Meiosis', 'Cleavage'], answer: 'Meiosis' },
+                { type: 'mcq', question: 'Which event marks the beginning of fertilization?', options: ['Initiation of zygote cell division', 'Completion of Meiosis II by the oocyte', 'Gamete fusion (zygote formation)', 'Spermatozoon binding to the zona pellucida'], answer: 'Gamete fusion (zygote formation)' },
+                { type: 'mcq', question: 'During fertilization, what immediate action does the oocyte take to prevent fusion by additional sperm?', options: ['It releases degradative enzymes.', 'It immediately cancels its membrane potential.', 'It binds to a specific glycoprotein.', 'It completes Meiosis I.'], answer: 'It immediately cancels its membrane potential.' },
+                { type: 'mcq', question: 'The initial series of mitotic divisions by which the large zygote is fractionated into numerous smaller cells called blastomeres is defined as what?', options: ['Gastrulation', 'Implantation', 'Cleavage', 'Differentiation'], answer: 'Cleavage' },
+                { type: 'mcq', question: 'Cells of the inner cell mass of the blastocyst are referred to as pluripotent because they can differentiate into what?', options: ['Only extra-embryonic tissues', 'All tissues of the body (except extra-embryonic tissues)', 'Only trophoblasts', 'Just fetal membranes'], answer: 'All tissues of the body (except extra-embryonic tissues)' },
+                { type: 'mcq', question: 'Which type of twin results when two zygotes develop independently during the same pregnancy?', options: ['Monozygotic', 'Conjoined', 'Diplopagus', 'Dizygotic'], answer: 'Dizygotic' },
+                { type: 'mcq', question: 'The ectoderm forms which of the following body parts?', options: ['Muscle and connective tissue', 'Mucosal epithelium of respiratory system', 'Epidermis of the skin and nervous system', 'Components of the circulatory system'], answer: 'Epidermis of the skin and nervous system' },
+                { type: 'mcq', question: 'What is the rod-shaped aggregate of cells located between the ectoderm and endoderm anterior to the primitive streak that induces the formation of the nervous system?', options: ['Neural tube', 'Somite', 'Notochord', 'Primitive streak'], answer: 'Notochord' },
+                { type: 'mcq', question: 'Which part of the somite gives rise to the dermis of the skin?', options: ['Sclerotome', 'Myotome', 'Dermatome', 'Mesoderm'], answer: 'Dermatome' },
+                { type: 'mcq', question: 'What is the classification of placenta where the uterine epithelium, uterine connective tissue, and uterine endothelium may be eroded, and found in primates and rodents?', options: ['Epitheliochorial', 'Synepitheliochorial', 'Endothelial chorial', 'Hemochorial'], answer: 'Hemochorial' },
+                // SAQs
+                { type: 'saq', question: 'What is the diploid cell formed by the fusion of male and female haploid gametes?', answer: 'Zygote' },
+                { type: 'saq', question: 'What is the definition of parturition?', answer: 'Giving birth' },
+                { type: 'saq', question: 'In which anatomical structure does the fusion of a spermatozoon with an oocyte typically take place?', answer: 'Oviduct' },
+                { type: 'saq', question: 'What is the name for the solid ball of blastomeres within a zona pellucida, typically consisting of 16 to 64 blastomeres?', answer: 'Morula' },
+                { type: 'saq', question: 'What defines the longitudinal axis of the embryo and indicates the start of germ layer formation?', answer: 'Primitive streak' },
+                { type: 'saq', question: 'What term refers to the notochord-induced transformation of ectoderm into nervous tissue?', answer: 'Neurulation' },
+                { type: 'saq', question: 'Which primary germ layer forms muscle and connective tissue?', answer: 'Mesoderm' },
+                { type: 'saq', question: 'Which fetal membrane develops as an outgrowth of the hindgut and is highly vascular?', answer: 'Allantois' }
+            ];
+
+            // --- STATE ---
+            let currentAttempt = 1;
+            const maxAttempts = 3;
+            let quizSubmitted = false;
+            let userName = '';
+            let lastScore = { score: 0, incorrectAnswers: [] };
+
+            // --- DOM ELEMENTS ---
+            const introPopup = document.getElementById('intro-popup');
+            const startQuizBtn = document.getElementById('start-quiz-btn');
+            const userNameInput = document.getElementById('user-name');
+            const nameError = document.getElementById('name-error');
+            const quizContainer = document.getElementById('quiz-container');
+            const questionsWrapper = document.getElementById('questions-wrapper');
+            const quizForm = document.getElementById('quiz-form');
+            const submitBtn = document.getElementById('submit-btn');
+            const resultsContainer = document.getElementById('results-container');
+            const scorePercentageEl = document.getElementById('score-percentage');
+            const scoreTextEl = document.getElementById('score-text');
+            const resultMessageEl = document.getElementById('result-message');
+            const retryBtn = document.getElementById('retry-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const attemptCounterEl = document.getElementById('attempt-counter');
+            const incorrectAnswersContainer = document.getElementById('incorrect-answers-container');
+            const incorrectAnswersList = document.getElementById('incorrect-answers-list');
+
+            // --- FUNCTIONS ---
+
+            /**
+             * Renders all quiz questions into the DOM.
+             */
+            function renderQuestions() {
+                questionsWrapper.innerHTML = '';
+                quizData.forEach((q, index) => {
+                    const questionIndex = index + 1;
+                    const questionEl = document.createElement('div');
+                    questionEl.className = 'bg-white p-6 rounded-xl shadow-md transition-all';
+                    questionEl.id = `question-container-${index}`;
+
+                    let questionHTML = `<p class="text-lg font-semibold mb-4">${questionIndex}. ${q.question}</p>`;
+
+                    if (q.type === 'mcq') {
+                        questionHTML += `<fieldset><legend class="sr-only">Options for question ${questionIndex}</legend><div class="space-y-3">`;
+                        q.options.forEach((option, optionIndex) => {
+                            const inputId = `q${index}_option${optionIndex}`;
+                            questionHTML += `
+                                <label for="${inputId}" class="flex items-center p-3 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer has-[:checked]:bg-indigo-50 has-[:checked]:border-indigo-400">
+                                    <input type="radio" id="${inputId}" name="question_${index}" value="${option}" class="custom-radio focusable">
+                                    <span class="text-slate-700">${option}</span>
+                                </label>
+                            `;
+                        });
+                        questionHTML += `</div></fieldset>`;
+                    } else if (q.type === 'saq') {
+                        questionHTML += `
+                            <label for="question_${index}" class="sr-only">${q.question}</label>
+                            <input type="text" id="question_${index}" name="question_${index}" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focusable" placeholder="Your answer here...">
+                        `;
+                    }
+                    questionEl.innerHTML = questionHTML;
+                    questionsWrapper.appendChild(questionEl);
+                });
+            }
+
+            /**
+             * Calculates the user's score and provides feedback.
+             */
+            function handleSubmit(event) {
+                event.preventDefault();
+                if (quizSubmitted) return;
+
+                let score = 0;
+                let incorrectAnswers = [];
+                quizData.forEach((q, index) => {
+                    const questionContainer = document.getElementById(`question-container-${index}`);
+                    let userAnswer;
+                    let isCorrect = false;
+
+                    if (q.type === 'mcq') {
+                        const selectedOption = document.querySelector(`input[name="question_${index}"]:checked`);
+                        userAnswer = selectedOption ? selectedOption.value : 'Not answered';
+                        isCorrect = selectedOption ? selectedOption.value === q.answer : false;
+                    } else { // SAQ
+                        const inputEl = document.getElementById(`question_${index}`);
+                        userAnswer = inputEl.value.trim() || 'Not answered';
+                        isCorrect = userAnswer.toLowerCase() === q.answer.toLowerCase();
+                    }
+                    
+                    if (isCorrect) {
+                        score++;
+                        questionContainer.classList.add('correct-answer');
+                    } else {
+                        questionContainer.classList.add('incorrect-answer');
+                        incorrectAnswers.push({ question: q.question, userAnswer, correctAnswer: q.answer });
+                    }
+                });
+                
+                lastScore = { score, incorrectAnswers };
+                quizSubmitted = true;
+                displayResults(score, incorrectAnswers);
+            }
+
+            /**
+             * Displays the final score and appropriate messages.
+             * @param {number} score - The number of correct answers.
+             * @param {Array} incorrectAnswers - An array of incorrect answer objects.
+             */
+            function displayResults(score, incorrectAnswers) {
+                const totalQuestions = quizData.length;
+                const percentage = Math.round((score / totalQuestions) * 100);
+
+                resultsContainer.querySelector('h2').textContent = `Quiz Results for ${userName}`;
+                scorePercentageEl.textContent = `${percentage}%`;
+                scoreTextEl.textContent = `You answered ${score} out of ${totalQuestions} questions correctly.`;
+
+                const allInputs = quizForm.querySelectorAll('input');
+                allInputs.forEach(input => input.disabled = true);
+                submitBtn.disabled = true;
+                downloadBtn.classList.remove('hidden');
+
+                if (percentage >= 50) {
+                    resultMessageEl.textContent = 'Congratulations! You passed the quiz.';
+                    resultMessageEl.className = 'p-4 rounded-lg font-semibold bg-green-100 text-green-800';
+                    retryBtn.classList.add('hidden');
+                } else {
+                    if (currentAttempt < maxAttempts) {
+                        resultMessageEl.textContent = 'You did not pass. Please review your answers and try again.';
+                        resultMessageEl.className = 'p-4 rounded-lg font-semibold bg-yellow-100 text-yellow-800';
+                        retryBtn.classList.remove('hidden');
+                    } else {
+                        resultMessageEl.textContent = 'You have used all 3 attempts. You can no longer retake the quiz.';
+                        resultMessageEl.className = 'p-4 rounded-lg font-semibold bg-red-100 text-red-800';
+                        retryBtn.classList.add('hidden');
+                        submitBtn.textContent = 'All Attempts Used';
+                    }
+                }
+
+                if (incorrectAnswers.length > 0) {
+                    incorrectAnswersContainer.classList.remove('hidden');
+                    incorrectAnswersList.innerHTML = incorrectAnswers.map(item => `
+                        <div class="p-4 bg-slate-50 rounded-lg">
+                            <p class="font-semibold text-slate-800">${item.question}</p>
+                            <p class="text-red-600"><strong>Your Answer:</strong> ${item.userAnswer}</p>
+                            <p class="text-green-600"><strong>Correct Answer:</strong> ${item.correctAnswer}</p>
+                        </div>
+                    `).join('');
+                } else {
+                    incorrectAnswersContainer.classList.add('hidden');
+                    incorrectAnswersList.innerHTML = '';
+                }
+
+                resultsContainer.classList.remove('hidden');
+                resultsContainer.scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            /**
+             * Helper function to wrap text on a canvas.
+             * @param {CanvasRenderingContext2D} context - The canvas rendering context.
+             * @param {string} text - The text to wrap.
+             * @param {number} x - The x-coordinate to start drawing.
+             * @param {number} y - The y-coordinate to start drawing.
+             * @param {number} maxWidth - The maximum width of a line.
+             * @param {number} lineHeight - The height of each line.
+             * @returns {number} The new y-coordinate after drawing.
+             */
+            function wrapText(context, text, x, y, maxWidth, lineHeight) {
+                const words = text.split(' ');
+                let line = '';
+                let currentY = y;
+
+                for (let n = 0; n < words.length; n++) {
+                    const testLine = line + words[n] + ' ';
+                    const metrics = context.measureText(testLine);
+                    const testWidth = metrics.width;
+                    if (testWidth > maxWidth && n > 0) {
+                        context.fillText(line, x, currentY);
+                        line = words[n] + ' ';
+                        currentY += lineHeight;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                context.fillText(line, x, currentY);
+                return currentY + lineHeight;
+            }
+
+            /**
+             * Generates and triggers the download of a results PNG image.
+             */
+            function downloadResults() {
+                const { score, incorrectAnswers } = lastScore;
+                const totalQuestions = quizData.length;
+                const percentage = Math.round((score / totalQuestions) * 100);
+
+                const canvas = document.createElement('canvas');
+                // Estimate height based on content
+                const estimatedHeight = 350 + (incorrectAnswers.length * 100);
+                canvas.width = 800;
+                canvas.height = Math.max(600, estimatedHeight);
+                const ctx = canvas.getContext('2d');
+
+                // Background
+                ctx.fillStyle = '#f8fafc'; // slate-50
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                let currentY = 60;
+                const leftMargin = 50;
+                const contentWidth = canvas.width - (leftMargin * 2);
+
+                // Main Title
+                ctx.fillStyle = '#0f172a'; // slate-900
+                ctx.font = 'bold 32px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText('Quiz Results', canvas.width / 2, currentY);
+                currentY += 50;
+
+                // User Name
+                ctx.font = '24px Inter';
+                ctx.fillText(`For: ${userName}`, canvas.width / 2, currentY);
+                currentY += 30;
+
+                // Date
+                ctx.fillStyle = '#475569'; // slate-600
+                ctx.font = '16px Inter';
+                ctx.fillText(`Date: ${new Date().toLocaleDateString()}`, canvas.width / 2, currentY);
+                currentY += 60;
+
+                // Score
+                ctx.fillStyle = '#0f172a';
+                ctx.font = 'bold 72px Inter';
+                ctx.fillText(`${percentage}%`, canvas.width / 2, currentY);
+                currentY += 40;
+
+                // Score Text
+                ctx.font = '20px Inter';
+                ctx.fillText(`(${score} out of ${totalQuestions} correct)`, canvas.width / 2, currentY);
+                currentY += 50;
+
+                // Pass/Fail Message
+                ctx.textAlign = 'left';
+                if (percentage >= 50) {
+                    ctx.fillStyle = '#166534'; // green-800
+                    ctx.font = 'bold 20px Inter';
+                    wrapText(ctx, 'Congratulations! You have successfully passed the quiz.', leftMargin, currentY, contentWidth, 28);
+                } else {
+                    ctx.fillStyle = '#92400e'; // yellow-800
+                    ctx.font = 'bold 20px Inter';
+                    wrapText(ctx, 'Keep Studying! You did not pass this time, but keep up the great effort!', leftMargin, currentY, contentWidth, 28);
+                }
+                currentY += 80;
+
+                // Incorrect Answers Section
+                if (incorrectAnswers.length > 0) {
+                    ctx.fillStyle = '#0f172a';
+                    ctx.font = 'bold 22px Inter';
+                    ctx.fillText('Review of Incorrect Answers', leftMargin, currentY);
+                    currentY += 40;
+
+                    incorrectAnswers.forEach((item, index) => {
+                        ctx.font = 'bold 16px Inter';
+                        ctx.fillStyle = '#334155'; // slate-700
+                        currentY = wrapText(ctx, `${index + 1}. ${item.question}`, leftMargin, currentY, contentWidth, 24);
+                        
+                        ctx.font = '16px Inter';
+                        ctx.fillStyle = '#be123c'; // red-700
+                        currentY = wrapText(ctx, `Your Answer: ${item.userAnswer}`, leftMargin + 15, currentY, contentWidth - 15, 22);
+
+                        ctx.fillStyle = '#15803d'; // green-700
+                        currentY = wrapText(ctx, `Correct Answer: ${item.correctAnswer}`, leftMargin + 15, currentY, contentWidth - 15, 22);
+                        currentY += 20; // Add spacing between questions
+                    });
+                }
+                
+                // Trigger Download
+               // Choose the container you want to capture
+const targetElement = document.getElementById('results-container'); // Use the ID of the section you want to capture
+
+html2canvas(targetElement).then(canvas => {
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    const safeFileName = userName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    link.download = `quiz_results_${safeFileName}.png`;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
+
+            }
+
+
+            /**
+             * Resets the quiz for another attempt.
+             */
+            function resetForRetry() {
+                currentAttempt++;
+                quizSubmitted = false;
+
+                attemptCounterEl.textContent = `${currentAttempt} of ${maxAttempts}`;
+                
+                resultsContainer.classList.add('hidden');
+                downloadBtn.classList.add('hidden');
+                incorrectAnswersContainer.classList.add('hidden');
+                incorrectAnswersList.innerHTML = '';
+
+                document.querySelectorAll('.correct-answer, .incorrect-answer').forEach(el => {
+                    el.classList.remove('correct-answer', 'incorrect-answer');
+                });
+
+                quizForm.reset();
+                const allInputs = quizForm.querySelectorAll('input');
+                allInputs.forEach(input => input.disabled = false);
+                submitBtn.disabled = false;
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            // --- EVENT LISTENERS ---
+            startQuizBtn.addEventListener('click', () => {
+                const name = userNameInput.value.trim();
+                if (name) {
+                    userName = name;
+                    nameError.classList.add('hidden');
+                    introPopup.classList.add('opacity-0', 'scale-95');
+                    quizContainer.classList.remove('opacity-0');
+                    setTimeout(() => {
+                        introPopup.style.display = 'none';
+                    }, 300);
+                } else {
+                    nameError.classList.remove('hidden');
+                }
+            });
+
+            quizForm.addEventListener('submit', handleSubmit);
+            retryBtn.addEventListener('click', resetForRetry);
+            downloadBtn.addEventListener('click', downloadResults);
+
+            // --- INITIALIZATION ---
+            renderQuestions();
+        });
+    </script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+</body>
+</html>
