@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anatomy & Physiology Learning Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease-in-out;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+        }
+        .btn-secondary {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+        .btn-secondary:hover {
+            background-color: #d1d5db;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div id="quiz-container" class="card w-full max-w-4xl p-6 md:p-8">
+        <!-- Header -->
+        <div class="flex justify-between items-center border-b pb-4 mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Anatomy Quiz</h1>
+            <div class="flex space-x-4">
+                <div id="progress-indicator" class="text-sm font-medium text-gray-600">Question 1 / 20</div>
+                <div id="score-display" class="text-sm font-bold text-indigo-600">Passed: 0</div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div id="main-content">
+            <!-- Question -->
+            <div id="question-area" class="mb-6">
+                <h2 id="question-text" class="text-lg md:text-xl font-semibold leading-relaxed">Loading question...</h2>
+            </div>
+
+            <!-- Answer Input -->
+            <div id="answer-area" class="mb-6">
+                <label for="user-answer" class="block text-sm font-medium text-gray-700 mb-2">Your Answer:</label>
+                <textarea id="user-answer" rows="8" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"></textarea>
+            </div>
+
+            <!-- Feedback Area -->
+            <div id="feedback-area" class="hidden p-4 rounded-md mb-6 fade-in">
+                 <h3 class="text-md font-bold mb-2">Model Answer:</h3>
+                 <p id="correct-answer-text" class="text-sm text-gray-700 leading-relaxed"></p>
+            </div>
+             <div id="result-message" class="hidden p-4 rounded-md mb-6 text-center font-bold fade-in"></div>
+
+            <!-- Controls -->
+            <div id="controls" class="flex justify-end space-x-4">
+                <button id="submit-btn" class="btn btn-primary">Submit Answer</button>
+                <button id="next-btn" class="btn btn-secondary hidden">Next Question</button>
+            </div>
+        </div>
+        
+        <!-- Final Score Screen -->
+        <div id="final-score-screen" class="hidden text-center py-10">
+            <h2 class="text-3xl font-bold mb-4">Quiz Complete!</h2>
+            <p class="text-xl mb-2">You passed:</p>
+            <p id="final-score" class="text-5xl font-extrabold text-indigo-600 mb-8">0 / 20 questions</p>
+            <button id="restart-btn" class="btn btn-primary">Restart Quiz</button>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="modal-title" class="text-2xl font-bold text-green-600 mb-2">Well Done!</h2>
+            <p id="modal-score" class="text-lg mb-4">You scored 75%!</p>
+            <p id="modal-advice" class="text-gray-600"></p>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        const quizData = [
+            {
+                question: "Describe the major classifications of joints based on the uniting medium and movement, providing examples for each category.",
+                answer: "Joints can be classified based on the uniting medium into three main types: Fibrous joints, Cartilaginous joints, and Synovial joints. 1. Fibrous Joints: Uniting medium is dense connective tissue. Allows minimal movement (synarthroses). Examples: Sutures (skull bones), Syndesmosis (radio-ulnar joints), Gomphosis (teeth in sockets). 2. Cartilaginous Joints: Uniting medium is cartilage (synchondrosis). Allows minimal movement. Examples: Pelvic symphysis, joints between epiphysis and diaphysis in young animals. 3. Synovial Joints: Movable joints with a fluid-filled joint cavity. Features include articular cartilage, a joint capsule (fibrous layer and synovial membrane), and synovial fluid. Examples: Simple (scapula-humeral joint) and Composite (carpal joints).",
+            },
+            {
+                question: "Explain various types of joint movements possible in the appendicular skeleton, detailing the specific actions and the types of joints that facilitate them.",
+                answer: "Joint movements in the appendicular skeleton include: Translation: Sliding movement (e.g., between vertebrae). Flexion: Decreasing the angle between limb segments. Extension: Increasing the angle between limb segments. Adduction: Movement towards the median plane. Abduction: Movement away from the median plane. Circumduction: Cone-like motion of a limb. These are facilitated by specific synovial joints like Plane joints (translation), Hinge joints (flexion/extension), and Ball-and-socket joints (adduction, abduction, circumduction).",
+            },
+            {
+                question: "Discuss the defining characteristics and key structural features of synovial joints, differentiating between simple and composite types.",
+                answer: "Synovial joints are movable joints defined by a fluid-filled joint cavity. Key features include: Articular surfaces covered by hyaline articular cartilage. A joint capsule with an outer fibrous layer and an inner synovial membrane that secretes synovial fluid. A joint cavity containing lubricating synovial fluid. Ligaments for stability. Types: Simple joints: Have two articular surfaces (e.g., scapula-humeral joint). Composite joints: Have more than two articular surfaces within one capsule (e.g., carpal joints).",
+            },
+            {
+                question: "Detail the gross anatomy of the ovaries and oviducts in domestic animals, including their location, structure, and functions.",
+                answer: "Ovaries: Female gonads located in the dorsal abdominal cavity, caudal to the kidneys. They produce ova and have endocrine functions. Structurally, they have an outer tunica albugenea, a cortex (where ova develop), and a central medulla (blood vessels). Oviducts (Fallopian tubes): Paired, convoluted tubes for passage of ova and fertilization. They consist of the infundibulum (funnel-shaped end with fimbriae), a mid-section, and are lined with ciliated epithelium to move the embryo towards the uterus.",
+            },
+            {
+                question: "Describe the structure of the uterus and cervix in domestic animals, outlining the different layers of the uterine wall and the characteristic features of the cervix.",
+                answer: "Uterus: Typically bicornuate (two horns) in domestic animals. Uterine wall has three layers: Endometrium (mucosa with glands), Myometrium (muscularis layer), and Perimetrium (serosa). In ruminants, the endometrium has caruncles for fetal membrane attachment. Cervix: A thick muscular sphincter connecting the uterus to the vagina. It is normally tightly closed except during estrus and parturition. It features strong annular folds (circular in ruminants, spiral in swine) that project into its lumen.",
+            },
+        ];
+        
+        const fullQuizData = [...quizData, ...quizData, ...quizData, ...quizData];
+
+        // --- DOM Elements ---
+        const questionText = document.getElementById('question-text');
+        const userAnswer = document.getElementById('user-answer');
+        const feedbackArea = document.getElementById('feedback-area');
+        const correctAnswerText = document.getElementById('correct-answer-text');
+        const resultMessage = document.getElementById('result-message');
+        const progressIndicator = document.getElementById('progress-indicator');
+        const scoreDisplay = document.getElementById('score-display');
+        const submitBtn = document.getElementById('submit-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const mainContent = document.getElementById('main-content');
+        const finalScoreScreen = document.getElementById('final-score-screen');
+        const finalScore = document.getElementById('final-score');
+        const restartBtn = document.getElementById('restart-btn');
+        const successModal = document.getElementById('success-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalScore = document.getElementById('modal-score');
+        const modalAdvice = document.getElementById('modal-advice');
+
+        // --- State ---
+        let currentQuestionIndex = 0;
+        let score = 0; // Tracks number of questions passed (>50%)
+
+        // --- Functions ---
+        
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            mainContent.style.display = 'block';
+            finalScoreScreen.style.display = 'none';
+            displayQuestion();
+            updateScoreDisplay();
+        }
+
+        function displayQuestion() {
+            const currentQuestion = fullQuizData[currentQuestionIndex];
+            questionText.textContent = currentQuestion.question;
+            userAnswer.value = '';
+            userAnswer.disabled = false;
+            feedbackArea.classList.add('hidden');
+            resultMessage.classList.add('hidden');
+            resultMessage.className = 'hidden p-4 rounded-md mb-6 text-center font-bold fade-in';
+            submitBtn.classList.remove('hidden');
+            nextBtn.classList.add('hidden');
+            progressIndicator.textContent = `Question ${currentQuestionIndex + 1} / ${fullQuizData.length}`;
+            if (currentQuestionIndex < fullQuizData.length -1) {
+                nextBtn.textContent = 'Next Question';
+            }
+        }
+
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Passed: ${score}`;
+        }
+
+        /**
+         * Calculates a percentage score based on word matching.
+         * @param {string} userText - The user's submitted answer.
+         * @param {string} correctText - The model answer.
+         * @returns {number} - The calculated percentage score.
+         */
+        function calculateScore(userText, correctText) {
+            const stopWords = new Set(['a', 'an', 'the', 'in', 'on', 'is', 'are', 'it', 'and', 'or', 'but', 'for', 'with', 'to', 'of', 'can', 'be', 'as', 'at']);
+            
+            const processText = (text) => {
+                return text.toLowerCase().split(/\s+/)
+                           .map(word => word.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g,""))
+                           .filter(word => word && !stopWords.has(word));
+            };
+
+            const userWords = processText(userText);
+            const correctWords = processText(correctText);
+            
+            if (correctWords.length === 0) return 100;
+
+            const correctWordSet = new Set(correctWords);
+            let matchCount = 0;
+            
+            userWords.forEach(word => {
+                if (correctWordSet.has(word)) {
+                    matchCount++;
+                    correctWordSet.delete(word); // Prevent multiple matches for the same word
+                }
+            });
+
+            const uniqueCorrectWords = new Set(processText(correctText));
+            const score = (matchCount / uniqueCorrectWords.size) * 100;
+            return Math.min(Math.round(score), 100); // Cap score at 100
+        }
+
+        /**
+         * Shows a success pop-up with tailored advice.
+         * @param {number} percentage - The score for the current question.
+         */
+        function showSuccessPopup(percentage) {
+            let advice = '';
+            if (percentage > 90) {
+                advice = "Excellent work! You have a deep understanding of this topic.";
+            } else if (percentage > 70) {
+                advice = "Great job! You have a solid grasp of the main concepts. Review the model answer to catch the finer details.";
+            } else {
+                advice = "Good effort! You're on the right track. Focus on including more specific terminology from the model answer next time.";
+            }
+
+            modalScore.textContent = `You scored ${percentage}%!`;
+            modalAdvice.textContent = advice;
+            successModal.classList.add('visible');
+
+            setTimeout(() => {
+                successModal.classList.remove('visible');
+            }, 3000);
+        }
+
+        function handleSubmit() {
+            const currentQuestion = fullQuizData[currentQuestionIndex];
+            const userText = userAnswer.value;
+            
+            const percentageScore = calculateScore(userText, currentQuestion.answer);
+
+            if (percentageScore > 50) {
+                score++;
+                resultMessage.textContent = `Passed! Your score: ${percentageScore}%`;
+                resultMessage.classList.add('bg-green-100', 'text-green-800');
+                showSuccessPopup(percentageScore);
+            } else {
+                resultMessage.textContent = `Needs Improvement. Your score: ${percentageScore}%`;
+                resultMessage.classList.add('bg-red-100', 'text-red-800');
+            }
+            
+            updateScoreDisplay();
+            correctAnswerText.innerText = currentQuestion.answer;
+            feedbackArea.classList.remove('hidden');
+            resultMessage.classList.remove('hidden');
+
+            userAnswer.disabled = true;
+            submitBtn.classList.add('hidden');
+            nextBtn.classList.remove('hidden');
+
+            if (currentQuestionIndex === fullQuizData.length - 1) {
+                nextBtn.textContent = 'Finish Quiz';
+            }
+        }
+
+        function handleNext() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < fullQuizData.length) {
+                displayQuestion();
+            } else {
+                showFinalScore();
+            }
+        }
+
+        function showFinalScore() {
+            mainContent.style.display = 'none';
+            finalScore.textContent = `${score} / ${fullQuizData.length} questions`;
+            finalScoreScreen.style.display = 'block';
+            finalScoreScreen.classList.add('fade-in');
+        }
+
+        // --- Event Listeners ---
+        submitBtn.addEventListener('click', handleSubmit);
+        nextBtn.addEventListener('click', handleNext);
+        restartBtn.addEventListener('click', startQuiz);
+
+        // --- Initial Load ---
+        startQuiz();
+    </script>
+</body>
+</html>
